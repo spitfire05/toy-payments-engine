@@ -33,9 +33,8 @@ fn main() -> Result<()> {
         let transaction: Transaction = record.try_into()?;
 
         let result = repo.register_transaction(transaction);
-        match result {
-            Ok(_) => {}
-            Err(e) => eprintln!("ERROR: {}", e),
+        if let Err(e) = result {
+            eprintln!("ERROR: {}", e)
         }
     }
 

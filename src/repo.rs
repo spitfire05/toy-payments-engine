@@ -1,34 +1,25 @@
-use crate::{
-    errors::RepositoryError,
-    transaction::{Transaction, TransactionDataAmount},
-};
-use std::collections::HashMap;
+use crate::{errors::RepositoryError, transaction::Transaction};
+use std::collections::{HashMap, HashSet};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Client {
+    id: u16,
     available: f64,
     held: f64,
+    frozen: bool,
+    transactions: HashMap<u32, Transaction>,
+    disputed: HashSet<u32>,
 }
 
 impl Client {
-    pub fn new(available: f64, held: f64) -> Self {
-        Self { available, held }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Repository {
-    clients: HashMap<u16, Client>,
-    deposits: HashMap<u32, TransactionDataAmount>,
-    withdrawals: HashMap<u32, TransactionDataAmount>,
-}
-
-impl Repository {
-    pub fn new() -> Self {
+    pub fn new(id: u16) -> Self {
         Self {
-            clients: HashMap::new(),
-            deposits: HashMap::new(),
-            withdrawals: HashMap::new(),
+            id,
+            available: 0.0,
+            held: 0.0,
+            frozen: false,
+            transactions: HashMap::new(),
+            disputed: HashSet::new(),
         }
     }
 
@@ -36,31 +27,108 @@ impl Repository {
         &mut self,
         transaction: Transaction,
     ) -> Result<(), RepositoryError> {
+        let tx;
         match transaction {
             Transaction::Deposit(data) => {
-                self.clients
-                    .entry(*data.client())
-                    .and_modify(|c| c.available += data.amount())
-                    .or_insert_with(|| Client::new(*data.amount(), 0.0));
-                self.deposits.insert(*data.tx(), data);
+                tx = data.tx().to_owned();
+                if self.transactions.keys().any(|&k| k == tx) {
+                    return Err(RepositoryError::DuplicateTransactionId(tx));
+                }
+
+                self.available += data.amount();
+                self.transactions.insert(tx, transaction);
             }
             Transaction::Withdrawal(data) => {
-                let c = self.clients.get_mut(data.client()).ok_or_else(|| {
-                    RepositoryError::WithdrawalWouldResultInNegativeAmount(*data.client())
-                })?;
-                if c.available < *data.amount() {
+                tx = data.tx().to_owned();
+                if self.transactions.keys().any(|&k| k == tx) {
+                    return Err(RepositoryError::DuplicateTransactionId(tx));
+                }
+                if self.available < *data.amount() {
                     return Err(RepositoryError::WithdrawalWouldResultInNegativeAmount(
                         *data.client(),
                     ));
                 }
 
-                c.available -= data.amount();
-                self.withdrawals.insert(*data.tx(), data);
+                self.available -= data.amount();
+                self.transactions.insert(tx, transaction);
             }
-            Transaction::Dispute(_) => todo!(),
-            Transaction::Resolve(_) => todo!(),
+            Transaction::Dispute(data) => {
+                tx = data.tx().to_owned();
+                let org_tx = self
+                    .transactions
+                    .get(&tx)
+                    .ok_or(RepositoryError::TransactionDoesNotExist(tx, self.id))?;
+
+                if self.disputed.contains(&tx) {
+                    return Err(RepositoryError::TransactionAlreadyDisputed(tx));
+                }
+
+                // I assume dispute can only be done on deposit
+                if let Transaction::Deposit(data) = org_tx {
+                    self.available -= data.amount();
+                    self.held += data.amount();
+                    self.disputed.insert(tx);
+                } else {
+                    return Err(RepositoryError::WrongReferenceTransactionType);
+                }
+            }
+            Transaction::Resolve(data) => {
+                tx = data.tx().to_owned();
+                let org_tx = self
+                    .transactions
+                    .get(&tx)
+                    .ok_or(RepositoryError::TransactionDoesNotExist(tx, self.id))?;
+
+                if !self.disputed.contains(&tx) {
+                    return Err(RepositoryError::TransactionNotDisputed(tx));
+                }
+
+                // I assume dispute can only be done on deposit
+                if let Transaction::Deposit(data) = org_tx {
+                    self.available += data.amount();
+                    self.held -= data.amount();
+                    self.disputed.remove(&tx);
+                } else {
+                    return Err(RepositoryError::WrongReferenceTransactionType);
+                }
+            }
             Transaction::Chargeback(_) => todo!(),
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Repository {
+    clients: HashMap<u16, Client>,
+}
+
+impl Repository {
+    pub fn new() -> Self {
+        Self {
+            clients: HashMap::new(),
+        }
+    }
+
+    pub fn register_transaction(
+        &mut self,
+        transaction: Transaction,
+    ) -> Result<(), RepositoryError> {
+        let client_id = match transaction {
+            Transaction::Deposit(data) => data.client().to_owned(),
+            Transaction::Withdrawal(data) => data.client().to_owned(),
+            Transaction::Dispute(data) => data.client().to_owned(),
+            Transaction::Resolve(data) => data.client().to_owned(),
+            Transaction::Chargeback(data) => data.client().to_owned(),
         };
+
+        let client = self
+            .clients
+            .entry(client_id)
+            .or_insert_with(|| Client::new(client_id));
+
+        client.register_transaction(transaction)?;
 
         Ok(())
     }
