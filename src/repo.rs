@@ -6,7 +6,7 @@ pub struct Client {
     id: u16,
     available: f64,
     held: f64,
-    frozen: bool,
+    locked: bool,
     transactions: HashMap<u32, Transaction>,
     disputed: HashSet<u32>,
 }
@@ -17,7 +17,7 @@ impl Client {
             id,
             available: 0.0,
             held: 0.0,
-            frozen: false,
+            locked: false,
             transactions: HashMap::new(),
             disputed: HashSet::new(),
         }
@@ -87,7 +87,7 @@ impl Client {
                 if let Transaction::Deposit(data) = org_tx {
                     self.available += data.amount();
                     self.held -= data.amount();
-                    self.disputed.remove(&tx);
+                    self.disputed.remove(&tx); // not checking for result, b/c we have just checked that the set contains the id
                 } else {
                     return Err(RepositoryError::WrongReferenceTransactionType);
                 }
@@ -158,7 +158,7 @@ mod tests {
     #[test]
     fn withdrawal_on_insufficient_funds_results_in_error() {
         let tr1 = Transaction::Deposit(TransactionDataAmount::new(1, 1, 1.0));
-        let tr2 = Transaction::Withdrawal(TransactionDataAmount::new(1, 1, 2.0));
+        let tr2 = Transaction::Withdrawal(TransactionDataAmount::new(1, 2, 2.0));
         let mut repo = Repository::new();
 
         repo.register_transaction(tr1).expect("deposit failed");
@@ -168,7 +168,7 @@ mod tests {
             Ok(_) => panic!("did not return error"),
             Err(e) => match e {
                 crate::errors::RepositoryError::WithdrawalWouldResultInNegativeAmount(_) => {}
-                _ => panic!("wrong error returned"),
+                _ => panic!("wrong error returned: `{:?}`", e),
             },
         }
     }
