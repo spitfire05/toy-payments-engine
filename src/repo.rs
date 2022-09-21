@@ -3,6 +3,7 @@ use getset::Getters;
 use crate::{errors::RepositoryError, transaction::Transaction};
 use std::collections::{HashMap, HashSet};
 
+/// Represents internal state of the client in the engine
 #[derive(Debug, Clone, Getters)]
 pub struct Client {
     #[get = "pub"]
@@ -140,6 +141,7 @@ impl Client {
     }
 }
 
+/// Repository of all clients handled by this engine.
 #[derive(Debug, Clone)]
 pub struct Repository {
     clients: HashMap<u16, Client>,
