@@ -34,7 +34,7 @@ impl InputRecord {
     }
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, PartialEq, Eq)]
 pub struct OutputRecord {
     client: u16,
     available: String,
@@ -43,18 +43,24 @@ pub struct OutputRecord {
     locked: bool,
 }
 
+impl OutputRecord {
+    pub fn new(client: u16, available: f64, held: f64, total: f64, locked: bool) -> Self {
+        Self {
+            client,
+            available: format!("{:.4}", available),
+            held: format!("{:.4}", held),
+            total: format!("{:.4}", total),
+            locked,
+        }
+    }
+}
+
 impl From<&Client> for OutputRecord {
     fn from(c: &Client) -> Self {
         let available = *c.available();
         let held = *c.held();
         let total = available + held;
-        Self {
-            client: *c.id(),
-            available: format!("{:.4}", available),
-            held: format!("{:.4}", held),
-            total: format!("{:.4}", total),
-            locked: *c.locked(),
-        }
+        Self::new(*c.id(), available, held, total, *c.locked())
     }
 }
 

@@ -3,7 +3,10 @@ mod errors;
 mod repo;
 mod transaction;
 
-use color_eyre::{eyre::bail, Result};
+use color_eyre::{
+    eyre::{bail, Context},
+    Result,
+};
 use csv::Trim;
 use repo::Repository;
 use std::{convert::TryInto, env, fs::File};
@@ -26,7 +29,8 @@ fn main() -> Result<()> {
 
     let mut repo = Repository::new();
 
-    let file = File::open(args[1].as_str())?;
+    let file = File::open(args[1].as_str())
+        .wrap_err_with(|| format!("Can not open file `{}`", args[1].as_str()))?;
     let mut rdr = csv::ReaderBuilder::new()
         .flexible(true)
         .trim(Trim::All)
