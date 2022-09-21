@@ -1,4 +1,4 @@
-use crate::{dto::Record, errors::*};
+use crate::{dto::InputRecord, errors::*};
 use getset::Getters;
 use std::convert::TryFrom;
 
@@ -48,10 +48,10 @@ pub enum Transaction {
     Chargeback(TransactionData),
 }
 
-impl TryFrom<&Record> for Transaction {
+impl TryFrom<&InputRecord> for Transaction {
     type Error = DeserializationError;
 
-    fn try_from(value: &Record) -> Result<Self, Self::Error> {
+    fn try_from(value: &InputRecord) -> Result<Self, Self::Error> {
         match value.r#type().as_str() {
             "deposit" => {
                 let data = TransactionDataAmount::new(
@@ -97,10 +97,10 @@ impl TryFrom<&Record> for Transaction {
     }
 }
 
-impl TryFrom<Record> for Transaction {
+impl TryFrom<InputRecord> for Transaction {
     type Error = DeserializationError;
 
-    fn try_from(value: Record) -> Result<Self, Self::Error> {
+    fn try_from(value: InputRecord) -> Result<Self, Self::Error> {
         Transaction::try_from(&value)
     }
 }
@@ -108,13 +108,13 @@ impl TryFrom<Record> for Transaction {
 #[cfg(test)]
 mod tests {
     use super::Transaction;
-    use crate::{dto::Record, errors::DeserializationError};
+    use crate::{dto::InputRecord, errors::DeserializationError};
     use paste::paste;
     use quickcheck::Arbitrary;
     use quickcheck_macros::quickcheck;
     use std::convert::TryInto;
 
-    impl Arbitrary for Record {
+    impl Arbitrary for InputRecord {
         fn arbitrary(g: &mut quickcheck::Gen) -> Self {
             let mut amount;
             loop {
@@ -130,7 +130,7 @@ mod tests {
 
             let chosen_type = *g.choose(&transaction_types).unwrap();
 
-            Record::new(
+            InputRecord::new(
                 chosen_type.to_owned(),
                 u16::arbitrary(g),
                 u32::arbitrary(g),
@@ -140,7 +140,7 @@ mod tests {
     }
 
     #[quickcheck]
-    fn transaction_from_record(r: Record) -> bool {
+    fn transaction_from_record(r: InputRecord) -> bool {
         let tr = Transaction::try_from(&r).unwrap();
 
         macro_rules! record_equals_data {
@@ -164,7 +164,7 @@ mod tests {
             paste! {
                 #[test]
                 fn [<$type _needs_amount>]() {
-                    let record = Record::new($type, 1, 1, None);
+                    let record = InputRecord::new($type, 1, 1, None);
                     let result: Result<Transaction, _> = (&record).try_into();
                     assert!(result.is_err());
                     assert_eq!(

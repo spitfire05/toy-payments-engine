@@ -9,7 +9,7 @@ use repo::Repository;
 use std::{convert::TryInto, env, fs::File};
 use transaction::Transaction;
 
-use crate::dto::Record;
+use crate::dto::{InputRecord, OutputRecord};
 
 fn print_usage() {
     let bin = env!("CARGO_BIN_NAME");
@@ -32,7 +32,7 @@ fn main() -> Result<()> {
         .trim(Trim::All)
         .from_reader(file);
     for result in rdr.deserialize() {
-        let record: Record = result?;
+        let record: InputRecord = result?;
         let transaction: Transaction = record.try_into()?;
 
         let result = repo.register_transaction(transaction);
@@ -41,7 +41,11 @@ fn main() -> Result<()> {
         }
     }
 
-    eprintln!("{:#?}", repo);
+    let mut wtr = csv::Writer::from_writer(std::io::stdout());
+    for c in repo.iter_clients() {
+        let or: OutputRecord = c.into();
+        wtr.serialize(or)?;
+    }
 
     Ok(())
 }

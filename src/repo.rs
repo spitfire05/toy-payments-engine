@@ -1,19 +1,29 @@
+use getset::Getters;
+
 use crate::{errors::RepositoryError, transaction::Transaction};
 use std::collections::{HashMap, HashSet};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Getters)]
 pub struct Client {
+    #[get = "pub"]
     id: u16,
+
+    #[get = "pub"]
     available: f64,
+
+    #[get = "pub"]
     held: f64,
 
     // Whether the client is locked (chargeback occured)
+    #[get = "pub"]
     locked: bool,
 
     // Transaction log. On real system this should be backed by some kind of DB, as this will grow indefinitely.
+    #[get = "pub"]
     transactions: HashMap<u32, Transaction>,
 
     // Set of disputed transactions
+    #[get = "pub"]
     disputed: HashSet<u32>,
 }
 
@@ -156,6 +166,10 @@ impl Repository {
         client.register_transaction(transaction)?;
 
         Ok(())
+    }
+
+    pub fn iter_clients(&self) -> impl Iterator<Item = &Client> {
+        self.clients.values()
     }
 }
 

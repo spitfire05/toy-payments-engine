@@ -1,10 +1,12 @@
 // CSV DTOs
 
 use getset::Getters;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+
+use crate::repo::Client;
 
 #[derive(Debug, Deserialize, Clone, Getters)]
-pub struct Record {
+pub struct InputRecord {
     #[get = "pub"]
     r#type: String,
 
@@ -18,7 +20,7 @@ pub struct Record {
     amount: Option<f64>,
 }
 
-impl Record {
+impl InputRecord {
     #[cfg(test)]
     pub fn new<T: Into<String>>(r#type: T, client: u16, tx: u32, amount: Option<f64>) -> Self {
         let owned_type = r#type.into();
@@ -29,5 +31,47 @@ impl Record {
             tx,
             amount,
         }
+    }
+}
+
+#[derive(Debug, Serialize, Clone, Copy)]
+pub struct OutputRecord {
+    client: u16,
+    available: f64,
+    held: f64,
+    total: f64,
+    locked: bool,
+}
+
+impl OutputRecord {
+    pub fn new(client: u16, available: f64, held: f64, total: f64, locked: bool) -> Self {
+        Self {
+            client,
+            available,
+            held,
+            total,
+            locked,
+        }
+    }
+}
+
+impl From<&Client> for OutputRecord {
+    fn from(c: &Client) -> Self {
+        let available = *c.available();
+        let held = *c.held();
+        let total = available + held;
+        Self {
+            client: *c.id(),
+            available,
+            held,
+            total,
+            locked: *c.locked(),
+        }
+    }
+}
+
+impl From<Client> for OutputRecord {
+    fn from(c: Client) -> Self {
+        OutputRecord::from(&c)
     }
 }
