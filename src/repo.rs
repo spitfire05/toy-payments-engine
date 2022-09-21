@@ -6,8 +6,14 @@ pub struct Client {
     id: u16,
     available: f64,
     held: f64,
+
+    // Whether the client is locked (chargeback occured)
     locked: bool,
+
+    // Transaction log. On real system this should be backed by some kind of DB, as this will grow indefinitely.
     transactions: HashMap<u32, Transaction>,
+
+    // Set of disputed transactions
     disputed: HashSet<u32>,
 }
 
@@ -92,7 +98,26 @@ impl Client {
                     return Err(RepositoryError::WrongReferenceTransactionType);
                 }
             }
-            Transaction::Chargeback(_) => todo!(),
+            Transaction::Chargeback(data) => {
+                tx = data.tx().to_owned();
+                let org_tx = self
+                    .transactions
+                    .get(&tx)
+                    .ok_or(RepositoryError::TransactionDoesNotExist(tx, self.id))?;
+
+                if !self.disputed.contains(&tx) {
+                    return Err(RepositoryError::TransactionNotDisputed(tx));
+                }
+
+                // I assume dispute can only be done on deposit
+                if let Transaction::Deposit(data) = org_tx {
+                    self.held -= data.amount();
+                    self.locked = true;
+                    self.disputed.remove(&tx); // not checking for result, b/c we have just checked that the set contains the id
+                } else {
+                    return Err(RepositoryError::WrongReferenceTransactionType);
+                }
+            }
         }
 
         Ok(())
