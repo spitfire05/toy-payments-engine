@@ -41,6 +41,7 @@ fn main() -> Result<()> {
 
         let result = repo.register_transaction(transaction);
         if let Err(e) = result {
+            // In real system this would probably be logged in some other system
             eprintln!("ERROR: {}", e)
         }
     }

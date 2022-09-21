@@ -1,3 +1,5 @@
+//! Transaction definitions
+
 use crate::{dto::InputRecord, errors::*};
 use getset::Getters;
 use std::convert::TryFrom;

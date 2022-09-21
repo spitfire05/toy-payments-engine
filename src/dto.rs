@@ -1,4 +1,4 @@
-// CSV DTOs
+//! CSV Data Transfer Objects
 
 use getset::Getters;
 use serde::{Deserialize, Serialize};

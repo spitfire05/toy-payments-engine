@@ -1,3 +1,5 @@
+//! Repository & Client - internal system state
+
 use getset::Getters;
 
 use crate::{errors::RepositoryError, transaction::Transaction};

@@ -20,6 +20,7 @@ Can be run by `cargo test`. They are divided in 3 groups:
 
 ## Notes, assumptions and considerations
 
+* The input csv is processed one-row-at-a-time. This is to prevent excessive memory usage on big input sets.
 * The type used to handle the transaction amounts is `f64`. In real application, probably something custom, less prone to rounding errors, should be used.
 * Only deposit transactions can be disputed.
 * "Locked" clients can not accept deposits nor withdrawals. They can, however, accept new disputes, resolves and chargebacks.
