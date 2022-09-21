@@ -12,7 +12,7 @@ pub enum DeserializationError {
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum RepositoryError {
     #[error("Withdrawal operation on client `{0}` would result in a negative amount")]
-    WithdrawalWouldResultInNegativeAmount(u16),
+    InsufficientFunds(u16),
 
     #[error("Transaction id `{0}` already exists")]
     DuplicateTransactionId(u32),
@@ -28,4 +28,7 @@ pub enum RepositoryError {
 
     #[error("Transaction ID `{0}` is not disputed")]
     TransactionNotDisputed(u32),
+
+    #[error("Client ID `{0}` is locked")]
+    ClientLocked(u16),
 }

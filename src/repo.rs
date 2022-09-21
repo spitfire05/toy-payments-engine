@@ -18,11 +18,11 @@ pub struct Client {
     #[get = "pub"]
     locked: bool,
 
-    // Transaction log. On real system this should be backed by some kind of DB, as this will grow indefinitely.
+    // Deposit and withdrawal log. On real system this should be backed by some kind of DB, as this will grow indefinitely.
     #[get = "pub"]
     transactions: HashMap<u32, Transaction>,
 
-    // Set of disputed transactions
+    // Set of disputed transactions's IDs
     #[get = "pub"]
     disputed: HashSet<u32>,
 }
@@ -46,6 +46,10 @@ impl Client {
         let tx;
         match transaction {
             Transaction::Deposit(data) => {
+                if self.locked {
+                    return Err(RepositoryError::ClientLocked(self.id));
+                }
+
                 tx = data.tx().to_owned();
                 if self.transactions.keys().any(|&k| k == tx) {
                     return Err(RepositoryError::DuplicateTransactionId(tx));
@@ -55,14 +59,16 @@ impl Client {
                 self.transactions.insert(tx, transaction);
             }
             Transaction::Withdrawal(data) => {
+                if self.locked {
+                    return Err(RepositoryError::ClientLocked(self.id));
+                }
+
                 tx = data.tx().to_owned();
                 if self.transactions.keys().any(|&k| k == tx) {
                     return Err(RepositoryError::DuplicateTransactionId(tx));
                 }
                 if self.available < *data.amount() {
-                    return Err(RepositoryError::WithdrawalWouldResultInNegativeAmount(
-                        *data.client(),
-                    ));
+                    return Err(RepositoryError::InsufficientFunds(*data.client()));
                 }
 
                 self.available -= data.amount();
@@ -175,14 +181,14 @@ impl Repository {
 
 #[cfg(test)]
 mod tests {
-    use quickcheck::TestResult;
-    use quickcheck_macros::quickcheck;
-
     use super::Repository;
     use crate::{
         repo::Client,
         transaction::{Transaction, TransactionData, TransactionDataAmount},
     };
+    use quickcheck::TestResult;
+    use quickcheck_macros::quickcheck;
+    use std::collections::{HashMap, HashSet};
 
     macro_rules! valid_amount {
         ($amount:expr) => {
@@ -200,7 +206,7 @@ mod tests {
         match result {
             Ok(_) => panic!("did not return error"),
             Err(e) => match e {
-                crate::errors::RepositoryError::WithdrawalWouldResultInNegativeAmount(_) => {}
+                crate::errors::RepositoryError::InsufficientFunds(_) => {}
                 _ => panic!("wrong error returned"),
             },
         }
@@ -218,10 +224,61 @@ mod tests {
         match result {
             Ok(_) => panic!("did not return error"),
             Err(e) => match e {
-                crate::errors::RepositoryError::WithdrawalWouldResultInNegativeAmount(_) => {}
+                crate::errors::RepositoryError::InsufficientFunds(_) => {}
                 _ => panic!("wrong error returned: `{:?}`", e),
             },
         }
+    }
+
+    #[test]
+    fn locked_client_rejects_deposit_and_withdrawal() {
+        macro_rules! test {
+            ($tr:path) => {
+                let mut c = Client {
+                    id: 1,
+                    available: 0.0,
+                    held: 0.0,
+                    locked: true,
+                    transactions: HashMap::new(),
+                    disputed: HashSet::new(),
+                };
+                let tr = $tr(TransactionDataAmount::new(1, 1, 1.0));
+
+                let result = c.register_transaction(tr);
+
+                assert!(match result {
+                    Ok(_) => false,
+                    Err(e) => {
+                        matches!(e, crate::errors::RepositoryError::ClientLocked(_))
+                    }
+                });
+            };
+        }
+
+        test!(Transaction::Deposit);
+        test!(Transaction::Withdrawal);
+    }
+
+    #[test]
+    fn locked_client_accepts_dispute() {
+        let mut log = HashMap::new();
+        log.insert(
+            1u32,
+            Transaction::Deposit(TransactionDataAmount::new(1, 1, 1.0)),
+        );
+        let mut c = Client {
+            id: 1,
+            available: 0.0,
+            held: 0.0,
+            locked: true,
+            transactions: log,
+            disputed: HashSet::new(),
+        };
+        let tr = Transaction::Dispute(TransactionData::new(1, 1));
+
+        let result = c.register_transaction(tr);
+
+        assert!(result.is_ok());
     }
 
     #[quickcheck]
