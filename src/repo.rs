@@ -227,18 +227,16 @@ mod tests {
     }
 
     #[quickcheck]
-    fn deposit_and_dispute_result_in_held_funds(x: f64, y: f64) -> TestResult {
+    fn deposit_and_dispute_result_in_held_funds(x: f64) -> TestResult {
         if !valid_amount!(x) {
             return TestResult::discard();
         }
 
         let mut client = Client::new(1);
         let dep = Transaction::Deposit(TransactionDataAmount::new(1, 1, x));
-        // let dep2 = Transaction::Deposit(TransactionDataAmount::new(1, 2, y));
         let dis = Transaction::Dispute(TransactionData::new(1, 1));
 
         client.register_transaction(dep).expect("Deposit failed");
-        // client.register_transaction(dep2).expect("Deposit failed");
         client.register_transaction(dis).expect("Dispute failed");
 
         TestResult::from_bool(client.available == 0.0 && client.held == x)
@@ -260,5 +258,23 @@ mod tests {
         client.register_transaction(res).expect("Resolve failed");
 
         TestResult::from_bool(client.available == x && client.held == 0.0)
+    }
+
+    #[quickcheck]
+    fn deposit_dispute_and_chargeback_result_in_no_funds_and_locked_client(x: f64) -> TestResult {
+        if !valid_amount!(x) {
+            return TestResult::discard();
+        }
+
+        let mut client = Client::new(1);
+        let dep = Transaction::Deposit(TransactionDataAmount::new(1, 1, x));
+        let dis = Transaction::Dispute(TransactionData::new(1, 1));
+        let cha = Transaction::Chargeback(TransactionData::new(1, 1));
+
+        client.register_transaction(dep).expect("Deposit failed");
+        client.register_transaction(dis).expect("Dispute failed");
+        client.register_transaction(cha).expect("Chargeback failed");
+
+        TestResult::from_bool(client.available == 0.0 && client.held == 0.0 && client.locked)
     }
 }
