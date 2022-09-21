@@ -1,3 +1,4 @@
+mod dto;
 mod errors;
 mod repo;
 mod transaction;
@@ -7,6 +8,8 @@ use csv::Trim;
 use repo::Repository;
 use std::{convert::TryInto, env, fs::File};
 use transaction::Transaction;
+
+use crate::dto::Record;
 
 fn print_usage() {
     let bin = env!("CARGO_BIN_NAME");
@@ -29,7 +32,7 @@ fn main() -> Result<()> {
         .trim(Trim::All)
         .from_reader(file);
     for result in rdr.deserialize() {
-        let record: transaction::Record = result?;
+        let record: Record = result?;
         let transaction: Transaction = record.try_into()?;
 
         let result = repo.register_transaction(transaction);

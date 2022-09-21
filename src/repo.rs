@@ -161,8 +161,20 @@ impl Repository {
 
 #[cfg(test)]
 mod tests {
+    use quickcheck::TestResult;
+    use quickcheck_macros::quickcheck;
+
     use super::Repository;
-    use crate::transaction::{Transaction, TransactionDataAmount};
+    use crate::{
+        repo::Client,
+        transaction::{Transaction, TransactionData, TransactionDataAmount},
+    };
+
+    macro_rules! valid_amount {
+        ($amount:expr) => {
+            $amount.is_normal() && $amount.is_sign_positive()
+        };
+    }
 
     #[test]
     fn withdrawal_on_non_existing_client_results_in_error() {
@@ -196,5 +208,57 @@ mod tests {
                 _ => panic!("wrong error returned: `{:?}`", e),
             },
         }
+    }
+
+    #[quickcheck]
+    fn deposit_and_withdrawal_for_same_amount_equals_to_zero(x: f64) -> TestResult {
+        if !valid_amount!(x) {
+            return TestResult::discard();
+        }
+
+        let mut client = Client::new(1);
+        let dep = Transaction::Deposit(TransactionDataAmount::new(1, 1, x));
+        let wit = Transaction::Withdrawal(TransactionDataAmount::new(1, 2, x));
+
+        client.register_transaction(dep).expect("Deposit failed");
+        client.register_transaction(wit).expect("Withdrawal failed");
+
+        TestResult::from_bool(client.available == 0.0 && client.held == 0.0)
+    }
+
+    #[quickcheck]
+    fn deposit_and_dispute_result_in_held_funds(x: f64, y: f64) -> TestResult {
+        if !valid_amount!(x) {
+            return TestResult::discard();
+        }
+
+        let mut client = Client::new(1);
+        let dep = Transaction::Deposit(TransactionDataAmount::new(1, 1, x));
+        // let dep2 = Transaction::Deposit(TransactionDataAmount::new(1, 2, y));
+        let dis = Transaction::Dispute(TransactionData::new(1, 1));
+
+        client.register_transaction(dep).expect("Deposit failed");
+        // client.register_transaction(dep2).expect("Deposit failed");
+        client.register_transaction(dis).expect("Dispute failed");
+
+        TestResult::from_bool(client.available == 0.0 && client.held == x)
+    }
+
+    #[quickcheck]
+    fn deposit_dispute_and_resolve_result_in_available_funds(x: f64) -> TestResult {
+        if !valid_amount!(x) {
+            return TestResult::discard();
+        }
+
+        let mut client = Client::new(1);
+        let dep = Transaction::Deposit(TransactionDataAmount::new(1, 1, x));
+        let dis = Transaction::Dispute(TransactionData::new(1, 1));
+        let res = Transaction::Resolve(TransactionData::new(1, 1));
+
+        client.register_transaction(dep).expect("Deposit failed");
+        client.register_transaction(dis).expect("Dispute failed");
+        client.register_transaction(res).expect("Resolve failed");
+
+        TestResult::from_bool(client.available == x && client.held == 0.0)
     }
 }
