@@ -1,6 +1,18 @@
 use assert_cmd::prelude::OutputAssertExt;
 use predicates::prelude::{predicate, PredicateBooleanExt};
 
+// https://danielkeep.github.io/tlborm/book/blk-counting.html
+macro_rules! replace_expr {
+    ($_t:tt $sub:expr) => {
+        $sub
+    };
+}
+
+// https://danielkeep.github.io/tlborm/book/blk-counting.html
+macro_rules! count_tts {
+    ($($tts:tt)*) => {0usize $(+ replace_expr!($tts 1usize))*};
+}
+
 macro_rules! test_output {
     ($name:ident, $($line:expr),*) => {
         #[test]
@@ -13,11 +25,13 @@ macro_rules! test_output {
             let mut cmd = bin.command();
             let name = stringify!($name);
             cmd.arg(format!("tests/data/{}.csv", name));
+            let n = count_tts!($($line)*);
             cmd.assert().success().stdout(
                 predicate::str::contains("client,available,held,total,locked")
                 $(
                     .and(predicate::str::contains($line))
-                )*,
+                )*
+                .and(predicate::function(|x: &str| x.lines().count() == n + 1))
             );
 
             Ok(())
