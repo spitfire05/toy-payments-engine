@@ -3,6 +3,7 @@ mod errors;
 mod repo;
 mod transaction;
 
+use crate::dto::{InputRecord, OutputRecord};
 use color_eyre::{
     eyre::{bail, Context},
     Result,
@@ -11,8 +12,6 @@ use csv::Trim;
 use repo::Repository;
 use std::{convert::TryInto, env, fs::File};
 use transaction::Transaction;
-
-use crate::dto::{InputRecord, OutputRecord};
 
 fn print_usage() {
     let bin = env!("CARGO_BIN_NAME");

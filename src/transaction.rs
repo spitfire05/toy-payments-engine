@@ -17,12 +17,12 @@ pub struct TransactionDataAmount {
 }
 
 impl TransactionDataAmount {
-    pub fn new(client: u16, tx: u32, amount: f64) -> Self {
+    pub fn new(client: u16, tx: u32, amount: f64) -> Result<Self, DeserializationError> {
         if !amount.is_normal() || amount.is_sign_negative() {
-            panic!("Amount has to be non-zero, positive, finite value");
+            return Err(DeserializationError::InvalidAmount(amount));
         }
 
-        Self { client, tx, amount }
+        Ok(Self { client, tx, amount })
     }
 }
 
@@ -63,7 +63,7 @@ impl TryFrom<&InputRecord> for Transaction {
                     value.amount().ok_or_else(|| {
                         DeserializationError::AmountMissing(value.r#type().to_owned())
                     })?,
-                );
+                )?;
 
                 Ok(Transaction::Deposit(data))
             }
@@ -74,7 +74,7 @@ impl TryFrom<&InputRecord> for Transaction {
                     value.amount().ok_or_else(|| {
                         DeserializationError::AmountMissing(value.r#type().to_owned())
                     })?,
-                );
+                )?;
 
                 Ok(Transaction::Withdrawal(data))
             }
@@ -186,10 +186,10 @@ mod tests {
         ($name:ident, $value:expr) => {
             paste! {
                 #[test]
-                #[should_panic]
                 #[allow(non_snake_case)]
                 fn [<test_amount_validation_ $name>]() {
-                    let _data = $crate::transaction::TransactionDataAmount::new(1, 1, $value);
+                    let data = $crate::transaction::TransactionDataAmount::new(1, 1, $value);
+                    assert!(matches!(data, Err(DeserializationError::InvalidAmount(_))));
                 }
             }
         };

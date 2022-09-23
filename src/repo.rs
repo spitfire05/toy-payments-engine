@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn withdrawal_on_non_existing_client_results_in_error() {
-        let tr = Transaction::Withdrawal(TransactionDataAmount::new(1, 1, 1.0));
+        let tr = Transaction::Withdrawal(TransactionDataAmount::new(1, 1, 1.0).unwrap());
         let mut repo = Repository::new();
 
         let result = repo.register_transaction(tr);
@@ -228,8 +228,8 @@ mod tests {
 
     #[test]
     fn withdrawal_on_insufficient_funds_results_in_error() {
-        let tr1 = Transaction::Deposit(TransactionDataAmount::new(1, 1, 1.0));
-        let tr2 = Transaction::Withdrawal(TransactionDataAmount::new(1, 2, 2.0));
+        let tr1 = Transaction::Deposit(TransactionDataAmount::new(1, 1, 1.0).unwrap());
+        let tr2 = Transaction::Withdrawal(TransactionDataAmount::new(1, 2, 2.0).unwrap());
         let mut repo = Repository::new();
 
         repo.register_transaction(tr1).expect("deposit failed");
@@ -256,7 +256,7 @@ mod tests {
                     transactions: HashMap::new(),
                     disputed: HashSet::new(),
                 };
-                let tr = $tr(TransactionDataAmount::new(1, 1, 1.0));
+                let tr = $tr(TransactionDataAmount::new(1, 1, 1.0).unwrap());
 
                 let result = c.register_transaction(tr);
 
@@ -278,7 +278,7 @@ mod tests {
         let mut log = HashMap::new();
         log.insert(
             1u32,
-            Transaction::Deposit(TransactionDataAmount::new(1, 1, 1.0)),
+            Transaction::Deposit(TransactionDataAmount::new(1, 1, 1.0).unwrap()),
         );
         let mut c = Client {
             id: 1,
@@ -302,8 +302,8 @@ mod tests {
         }
 
         let mut client = Client::new(1);
-        let dep = Transaction::Deposit(TransactionDataAmount::new(1, 1, x));
-        let wit = Transaction::Withdrawal(TransactionDataAmount::new(1, 2, x));
+        let dep = Transaction::Deposit(TransactionDataAmount::new(1, 1, x).unwrap());
+        let wit = Transaction::Withdrawal(TransactionDataAmount::new(1, 2, x).unwrap());
 
         client.register_transaction(dep).expect("Deposit failed");
         client.register_transaction(wit).expect("Withdrawal failed");
@@ -318,7 +318,7 @@ mod tests {
         }
 
         let mut client = Client::new(1);
-        let dep = Transaction::Deposit(TransactionDataAmount::new(1, 1, x));
+        let dep = Transaction::Deposit(TransactionDataAmount::new(1, 1, x).unwrap());
         let dis = Transaction::Dispute(TransactionData::new(1, 1));
 
         client.register_transaction(dep).expect("Deposit failed");
@@ -334,7 +334,7 @@ mod tests {
         }
 
         let mut client = Client::new(1);
-        let dep = Transaction::Deposit(TransactionDataAmount::new(1, 1, x));
+        let dep = Transaction::Deposit(TransactionDataAmount::new(1, 1, x).unwrap());
         let dis = Transaction::Dispute(TransactionData::new(1, 1));
         let res = Transaction::Resolve(TransactionData::new(1, 1));
 
@@ -352,7 +352,7 @@ mod tests {
         }
 
         let mut client = Client::new(1);
-        let dep = Transaction::Deposit(TransactionDataAmount::new(1, 1, x));
+        let dep = Transaction::Deposit(TransactionDataAmount::new(1, 1, x).unwrap());
         let dis = Transaction::Dispute(TransactionData::new(1, 1));
         let cha = Transaction::Chargeback(TransactionData::new(1, 1));
 

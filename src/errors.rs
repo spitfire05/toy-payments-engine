@@ -1,12 +1,15 @@
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq)]
 pub enum DeserializationError {
     #[error("`{0}` is not a known transaction type")]
     UnknownTransactionType(String),
 
     #[error("Transaction type `{0}` needs amount value")]
     AmountMissing(String),
+
+    #[error("`{0}` is not valid value. Amount has to be non-zero, positive, finite value")]
+    InvalidAmount(f64),
 }
 
 #[derive(Error, Debug, PartialEq, Eq)]
