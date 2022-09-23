@@ -8,29 +8,33 @@ use std::collections::{HashMap, HashSet};
 /// Represents internal state of the client in the engine
 #[derive(Debug, Clone, Getters)]
 pub struct Client {
+    /// Client's unique id
     #[get = "pub"]
     id: u16,
 
+    /// Current available funds
     #[get = "pub"]
     available: f64,
 
+    /// Current held (disputed) funds
     #[get = "pub"]
     held: f64,
 
-    // Whether the client is locked (chargeback occured)
+    /// Whether the client is locked (chargeback occured)
     #[get = "pub"]
     locked: bool,
 
-    // Deposit and withdrawal log. On real system this should be backed by some kind of DB, as this will grow indefinitely.
+    /// Deposit and withdrawal log. On real system this should be backed by some kind of DB, as this will grow indefinitely.
     #[get = "pub"]
     transactions: HashMap<u32, Transaction>,
 
-    // Set of disputed transactions's IDs
+    /// Set of disputed transactions's IDs
     #[get = "pub"]
     disputed: HashSet<u32>,
 }
 
 impl Client {
+    /// Creates new client with given `id`
     pub fn new(id: u16) -> Self {
         Self {
             id,
@@ -42,6 +46,7 @@ impl Client {
         }
     }
 
+    /// Registers the transaction for this client
     pub fn register_transaction(
         &mut self,
         transaction: Transaction,
@@ -146,16 +151,20 @@ impl Client {
 /// Repository of all clients handled by this engine.
 #[derive(Debug, Clone)]
 pub struct Repository {
+    // even though `Client` struct holds its id, we use HashMap here
+    // instead of Vector for performance reasons
     clients: HashMap<u16, Client>,
 }
 
 impl Repository {
+    /// Returns new empty `Repository`
     pub fn new() -> Self {
         Self {
             clients: HashMap::new(),
         }
     }
 
+    /// Registers the transaction and modifies internal state
     pub fn register_transaction(
         &mut self,
         transaction: Transaction,
@@ -178,6 +187,7 @@ impl Repository {
         Ok(())
     }
 
+    /// Returns an iterator over clients existing in the system
     pub fn iter_clients(&self) -> impl Iterator<Item = &Client> {
         self.clients.values()
     }

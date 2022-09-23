@@ -27,6 +27,7 @@ fn main() -> Result<()> {
         bail!("Incorrect number of arguments");
     }
 
+    // `Repository` holds the internal state of the clients
     let mut repo = Repository::new();
 
     let file = File::open(args[1].as_str())

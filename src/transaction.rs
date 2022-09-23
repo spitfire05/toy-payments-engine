@@ -41,6 +41,7 @@ impl TransactionData {
     }
 }
 
+/// Represents the transaction in the system
 #[derive(Debug, Clone, Copy)]
 pub enum Transaction {
     Deposit(TransactionDataAmount),
