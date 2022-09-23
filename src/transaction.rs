@@ -180,4 +180,22 @@ mod tests {
 
     test_needs_amount!("deposit");
     test_needs_amount!("withdrawal");
+
+    macro_rules! test_amount_validation {
+        ($name:ident, $value:expr) => {
+            paste! {
+                #[test]
+                #[should_panic]
+                #[allow(non_snake_case)]
+                fn [<test_amount_validation_ $name>]() {
+                    let _data = $crate::transaction::TransactionDataAmount::new(1, 1, $value);
+                }
+            }
+        };
+    }
+
+    test_amount_validation!(zero, 0f64);
+    test_amount_validation!(NaN, f64::NAN);
+    test_amount_validation!(minusOne, -1f64);
+    test_amount_validation!(infinity, f64::INFINITY);
 }
